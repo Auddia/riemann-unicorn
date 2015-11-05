@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+
+# Reports Unicorn active and queued statistics to Riemann.
+
+require 'riemann/tools'
+
+class Riemann::Tools::Unicorn
+  include Riemann::Tools
+  require 'unicorn'
+
+  opt :unicorn_socket, 'Path to Unicorn Unix Socket', :type => String, :default => nil
+  opt :unicorn_tcp, 'Unicorn TCP Listener', :default => nil
+
+  def initialize
+    unless opts[:unicorn_socket] || opts[:unicorn_tcp]
+      puts 'Error: --unicorn-socket or --unicorn-tcp must be provided'
+      exit 1
+    end
+
+    unless opts[:unicorn_socket] || File.exists?(opts[:unicorn_socket])
+      puts "Error: Unix socket #{opts[:unicorn_socket]} not found"
+      exit 1
+    end
+  end
+
+  def tick
+    fetch_stats.each do |addr, stats|
+      report(
+          :service => 'Unicorn Active',
+          :metric => stats.active,
+          :state => 'ok',
+          :description => 'Unicorn Active Transactions',
+          :tags => ['unicorn']
+      )
+
+      report(
+          :service => 'Unicorn Queued',
+          :metric => stats.queued,
+          :state => 'ok',
+          :description => 'Unicorn Queued Transactions',
+          :tags => ['unicorn']
+      )
+    end
+  end
+
+  def fetch_stats()
+    if opts[:unicorn_socket]
+      Raindrops::Linux.unix_listener_stats([opts[:unicorn_socket]])
+    else
+      Raindrops::Linux.tcp_listener_stats([opts[:unicorn_tcp]])
+    end
+  end
+end
+
+Riemann::Tools::Unicorn.run
