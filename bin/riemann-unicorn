@@ -9,7 +9,7 @@ class Riemann::Tools::Unicorn
   require 'unicorn'
 
   opt :unicorn_socket, 'Path to Unicorn Unix Socket', :type => String, :default => nil
-  opt :unicorn_tcp, 'Unicorn TCP Listener', :default => nil
+  opt :unicorn_tcp, 'Unicorn TCP Listener', :type => String, :default => nil
 
   def initialize
     unless opts[:unicorn_socket] || opts[:unicorn_tcp]
@@ -17,7 +17,7 @@ class Riemann::Tools::Unicorn
       exit 1
     end
 
-    unless opts[:unicorn_socket] || File.exists?(opts[:unicorn_socket])
+    if opts[:unicorn_socket] && !File.exists?(opts[:unicorn_socket])
       puts "Error: Unix socket #{opts[:unicorn_socket]} not found"
       exit 1
     end
